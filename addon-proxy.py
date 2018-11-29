@@ -9,6 +9,7 @@ from threading import RLock, Thread
 import requests
 import semver
 import time
+import argparse
 
 
 _REFRESH_TIMEOUT = 60
@@ -19,13 +20,13 @@ _REQUESTS = deque()
 
 
 # Refresh the release list every 60 seconds
-def update_list():
+def update_list(url=_UPSTREAM):
     global _LIST
 
     while True:
         # Pull the latest release list
         try:
-            r = requests.get(_UPSTREAM)
+            r = requests.get(url)
             if r.status_code == 200:
                 with _LOCK:
                     _LIST = r.json()
@@ -166,7 +167,16 @@ async def analytics(request):
 
 
 if __name__ == '__main__':
-    t = Thread(target=update_list)
+    parser = argparse.ArgumentParser(description='Override default params')
+    parser.add_argument('--port', type=int, nargs='?',
+                        default=80,
+                        help='Port for server')
+    parser.add_argument('--url', type=str, nargs='?',
+                        default=_UPSTREAM,
+                        help='URL to serve list')
+    args = parser.parse_args()
+
+    t = Thread(target=update_list, args=(args.url,))
     t.daemon = True
     t.start()
 
@@ -174,4 +184,4 @@ if __name__ == '__main__':
     while _LIST is None:
         time.sleep(.1)
 
-    app.run(host='0.0.0.0', port=80)
+    app.run(host='0.0.0.0', port=args.port)
