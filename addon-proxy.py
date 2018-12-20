@@ -139,6 +139,7 @@ async def get_list(request):
                             'description': addon['description'],
                             'author': addon['author'],
                             'homepage': addon['homepage'],
+                            'license': addon['license'],
                             'version': package['version'],
                             'url': package['url'],
                             'checksum': package['checksum'],
