@@ -2,7 +2,7 @@
 
 from collections import deque
 from sanic import Sanic
-from sanic.response import json
+from sanic.response import html, json
 from sanic_compress import Compress
 from sanic_cors import CORS
 from threading import RLock, Thread
@@ -17,6 +17,95 @@ _UPSTREAM = 'https://raw.githubusercontent.com/mozilla-iot/addon-list/master/lis
 _LIST = None
 _LOCK = RLock()
 _REQUESTS = deque()
+
+_CSS = '''
+<style>
+    html, body {
+        background-color: #5d9bc7;
+        color: white;
+        font-family: 'Open Sans', sans-serif;
+        font-size: 10px;
+        padding: 2rem;
+        text-align: center;
+    }
+
+    h1 {
+        font-family: 'Zilla Slab', 'Open Sans', sans-serif;
+    }
+
+    ul {
+        list-style-type: none;
+    }
+
+    li {
+        background-color: #5288af;
+        padding: 2rem;
+        margin: 1rem auto;
+        border-radius: 0.5rem;
+        text-align: left;
+        width: 60rem;
+    }
+
+    .addon-name {
+        display: block;
+        font-size: 1.8rem;
+        padding-bottom: 0.5rem;
+    }
+
+    .addon-description {
+        display: block;
+        font-size: 1.8rem;
+        color: #ddd;
+        padding-bottom: 0.5rem;
+    }
+
+    .addon-author {
+        font-size: 1.4rem;
+        font-style: italic;
+        color: #ddd;
+    }
+
+    a:link,
+    a:visited,
+    a:hover,
+    a:active {
+        color: white;
+    }
+</style>
+'''
+
+_HTML = '''
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Add-ons - Mozilla IoT</title>
+        {css}
+    </head>
+    <body>
+        <h1>Mozilla Things Gateway Add-ons</h1>
+        <ul>
+        {addons}
+        </ul>
+    </body>
+</html>
+'''
+
+_LI_TEMPLATE = '''
+<li>
+    <span class="addon-name">{name}</span>
+    <span class="addon-description">{description}</span>
+    <span class="addon-author">by <a href="{homepage}">{author}</a></span>
+</li>
+'''
+
+
+def escape_html(s):
+    return s\
+        .replace('&', '&amp;')\
+        .replace('<', '&lt;')\
+        .replace('>', '&gt;')\
+        .replace('"', '&quot;')\
+        .replace("'", '&#39;')
 
 
 # Refresh the release list every 60 seconds
@@ -165,6 +254,21 @@ async def analytics(request):
 
     requests['total'] = total
     return json(requests)
+
+
+@app.route('/addons/info')
+async def info(request):
+    addons = ''
+    with _LOCK:
+        for addon in sorted(_LIST, key=lambda e: e['display_name']):
+            addons += _LI_TEMPLATE.format(
+                name=escape_html(addon['display_name']),
+                description=escape_html(addon['description']),
+                author=escape_html(addon['author']),
+                homepage=escape_html(addon['homepage']),
+            )
+
+    return html(_HTML.format(css=_CSS, addons=addons))
 
 
 if __name__ == '__main__':
