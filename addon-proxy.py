@@ -78,11 +78,11 @@ _HTML = '''
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <title>Add-ons - Mozilla IoT</title>
+        <title>Add-ons - WebThings Gateway</title>
         {css}
     </head>
     <body>
-        <h1>Mozilla Things Gateway Add-ons</h1>
+        <h1>Mozilla WebThings Gateway Add-ons</h1>
         <ul>
         {addons}
         </ul>
