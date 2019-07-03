@@ -135,7 +135,7 @@ def update_list(url=_UPSTREAM):
         time.sleep(_REFRESH_TIMEOUT)
 
 
-def check_addon(addon, arch, api, node, python, test, query):
+def check_addon(addon, arch, api, node, python, test, query, type_):
     results = []
 
     if query is not None:
@@ -144,6 +144,11 @@ def check_addon(addon, arch, api, node, python, test, query):
                 query not in addon['display_name'].lower() and \
                 query not in addon['description'].lower() and \
                 query not in addon['author'].lower():
+            return results
+
+    if type_ is not None:
+        type_ = type_.lower().strip()
+        if type_ != addon['type'].lower():
             return results
 
     for package in addon['packages']:
@@ -198,6 +203,7 @@ async def get_list(request):
     python = args['python'].split(',') if 'python' in args else ['2.7', '3.5']
     test = args['test'] == '1' if 'test' in args else False
     query = args['query'] if 'query' in args else None
+    type_ = args['type'] if 'type' in args else None
 
     if 'version' in args:
         version = args['version']
@@ -211,7 +217,9 @@ async def get_list(request):
     results = []
     with _LOCK:
         for addon in _LIST:
-            packages = check_addon(addon, arch, api, node, python, test, query)
+            packages = \
+                check_addon(addon, arch, api, node, python, test, query, type_)
+
             if packages:
                 if version['major'] == 0 and version['minor'] <= 6:
                     results.append({
@@ -241,6 +249,7 @@ async def get_list(request):
                             'version': package['version'],
                             'url': package['url'],
                             'checksum': package['checksum'],
+                            'type': addon['type'],
                         } for package in packages
                     ])
 
