@@ -2,18 +2,30 @@
 
 from collections import deque
 from sanic import Sanic
-from sanic.response import html, json
+from sanic.response import html as response_html, json as response_json
 from sanic_compress import Compress
 from sanic_cors import CORS
 from threading import RLock, Thread
-import requests
-import semver
-import time
 import argparse
+import glob
+import json
+import os
+import semver
+import shutil
+import subprocess
+import sys
+import time
 
+
+_DEFAULT_PORT = 80
+_DEFAULT_REPO = 'https://github.com/mozilla-iot/addon-list'
+_DEFAULT_BRANCH = 'master'
+
+_BASE_DIR = os.path.realpath(os.path.dirname(__file__))
+_REPO_DIR = os.path.join(_BASE_DIR, 'repo')
+_ADDONS_DIR = os.path.join(_REPO_DIR, 'addons')
 
 _REFRESH_TIMEOUT = 60
-_UPSTREAM = 'https://raw.githubusercontent.com/mozilla-iot/addon-list/master/list.json'  # noqa
 _LIST = None
 _LOCK = RLock()
 _REQUESTS = deque()
@@ -108,28 +120,53 @@ def escape_html(s):
         .replace("'", '&#39;')
 
 
-# Refresh the release list every 60 seconds
-def update_list(url=_UPSTREAM):
+def update_list(repo, branch):
     global _LIST
+
+    if os.path.exists(_REPO_DIR):
+        try:
+            shutil.rmtree(_REPO_DIR)
+        except OSError:
+            print('Failed to remove existing repo')
+            sys.exit(1)
+
+    code = subprocess.call(
+        ['git', 'clone', '--single-branch', '--branch', branch, repo, 'repo'],
+        cwd=_BASE_DIR,
+    )
+
+    if code != 0:
+        print('Failed to clone git repository')
+        sys.exit(1)
 
     while True:
         # Pull the latest release list
-        try:
-            r = requests.get(url)
-            if r.status_code == 200:
-                with _LOCK:
-                    _LIST = r.json()
+        code = subprocess.call(
+            ['git', 'pull'],
+            cwd=_REPO_DIR,
+        )
 
-            # Clear out old items from the request list
-            one_day_ago = time.time() - (24 * 60 * 60)
-            while len(_REQUESTS) > 0:
-                req = _REQUESTS.popleft()
-                if req[0] >= one_day_ago:
-                    _REQUESTS.appendleft(req)
-                    break
-        except Exception as e:
-            print(e)
-            pass
+        if code == 0:
+            addon_list = []
+
+            for path in sorted(glob.glob(os.path.join(_ADDONS_DIR, '*.json'))):
+                try:
+                    with open(path, 'rt') as f:
+                        addon_list.append(json.load(f))
+                except (IOError, OSError, ValueError) as e:
+                    print('Failed to read {}: {}'.format(path, e))
+                    continue
+
+            with _LOCK:
+                _LIST = addon_list
+
+        # Clear out old items from the request list
+        one_day_ago = time.time() - (24 * 60 * 60)
+        while len(_REQUESTS) > 0:
+            req = _REQUESTS.popleft()
+            if req[0] >= one_day_ago:
+                _REQUESTS.appendleft(req)
+                break
 
         # Sleep for a bit to avoid Github's rate limiting
         time.sleep(_REFRESH_TIMEOUT)
@@ -253,7 +290,7 @@ async def get_list(request):
                         } for package in packages
                     ])
 
-    return json(results)
+    return response_json(results)
 
 
 # Analytics route
@@ -271,7 +308,7 @@ async def analytics(request):
         total += 1
 
     requests['total'] = total
-    return json(requests)
+    return response_json(requests)
 
 
 @app.route('/addons/info')
@@ -286,20 +323,34 @@ async def info(request):
                 homepage=escape_html(addon['homepage']),
             )
 
-    return html(_HTML.format(css=_CSS, addons=addons))
+    return response_html(_HTML.format(css=_CSS, addons=addons))
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Override default params')
-    parser.add_argument('--port', type=int, nargs='?',
-                        default=80,
-                        help='Port for server')
-    parser.add_argument('--url', type=str, nargs='?',
-                        default=_UPSTREAM,
-                        help='URL to serve list')
+    parser = argparse.ArgumentParser(
+        description='Add-on proxy server for WebThings Gateway'
+    )
+    parser.add_argument(
+        '--port',
+        type=int,
+        default=_DEFAULT_PORT,
+        help='port for server',
+    )
+    parser.add_argument(
+        '--repo',
+        type=str,
+        default=_DEFAULT_REPO,
+        help='URL of git repository',
+    )
+    parser.add_argument(
+        '--branch',
+        type=str,
+        default=_DEFAULT_BRANCH,
+        help='branch to use from git repository',
+    )
     args = parser.parse_args()
 
-    t = Thread(target=update_list, args=(args.url,))
+    t = Thread(target=update_list, args=(args.repo, args.branch))
     t.daemon = True
     t.start()
 
