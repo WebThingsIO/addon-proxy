@@ -31,7 +31,7 @@ def request_list(version):
     node_version = '57'
     py_versions = '2.7,3.5'
 
-    url = 'http://localhost:8080/addons?api={}&arch={}&node={}&python={}&version={}'.format(
+    url = 'http://localhost:8080/addons?api={}&arch={}&node={}&python={}&version={}'.format(  # noqa
         api,
         arch,
         node_version,
@@ -45,11 +45,11 @@ def request_list(version):
 
 
 def test_0_6_1():
-    l = request_list('0.6.1')
+    addons = request_list('0.6.1')
 
-    assert len(l) > 0
+    assert len(addons) > 0
 
-    addon = l[0]
+    addon = addons[0]
 
     assert 'name' in addon and addon['name']
     assert 'display_name' in addon and addon['display_name']
@@ -73,11 +73,11 @@ def test_0_6_1():
 
 
 def test_0_9_2():
-    l = request_list('0.9.2')
+    addons = request_list('0.9.2')
 
-    assert len(l) > 0
+    assert len(addons) > 0
 
-    addon = l[0]
+    addon = addons[0]
 
     assert 'name' in addon and addon['name']
     assert 'display_name' in addon and addon['display_name']
@@ -92,11 +92,11 @@ def test_0_9_2():
 
 
 def test_0_10_0():
-    l = request_list('0.10.0')
+    addons = request_list('0.10.0')
 
-    assert len(l) > 0
+    assert len(addons) > 0
 
-    addon = l[0]
+    addon = addons[0]
 
     assert 'id' in addon and addon['id']
     assert 'name' in addon and addon['name']
@@ -120,7 +120,7 @@ if __name__ == '__main__':
     # Test different output formats
     test_0_6_1()
     test_0_9_2()
-    # test_0_10_0()
+    test_0_10_0()
 
     # Kill the server
     p.terminate()
