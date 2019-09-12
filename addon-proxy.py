@@ -172,13 +172,13 @@ def update_list(repo, branch):
         time.sleep(_REFRESH_TIMEOUT)
 
 
-def check_addon(addon, arch, api, node, python, test, query, type_):
+def check_addon(addon, arch, api, node, python, test, query, type_, version):
     results = []
 
     if query is not None:
         query = query.lower().strip()
-        if query not in addon['name'].lower() and \
-                query not in addon['display_name'].lower() and \
+        if query not in addon['id'].lower() and \
+                query not in addon['name'].lower() and \
                 query not in addon['description'].lower() and \
                 query not in addon['author'].lower():
             return results
@@ -195,9 +195,37 @@ def check_addon(addon, arch, api, node, python, test, query, type_):
                 package['architecture'] != arch:
             continue
 
-        # Verify API version
-        if package['api']['min'] > api or package['api']['max'] < api:
-            continue
+        # Only check API version until 0.10
+        if version.major == 0 and version.minor <= 9:
+            # Verify API version
+            if package['api']['min'] > api or package['api']['max'] < api:
+                continue
+
+        if (version.major == 0 and version.minor >= 10) or version.major > 0:
+            # Only check gateway version starting with 0.10
+            # Verify minimum gateway version
+            if package['gateway']['min'] != '*':
+                try:
+                    min_gw = semver.parse_version_info(
+                        package['gateway']['min']
+                    )
+                except ValueError:
+                    continue
+
+                if version < min_gw:
+                    continue
+
+            # Verify maximum gateway version
+            if package['gateway']['max'] != '*':
+                try:
+                    max_gw = semver.parse_version_info(
+                        package['gateway']['max']
+                    )
+                except ValueError:
+                    continue
+
+                if version > max_gw:
+                    continue
 
         # Verify node version
         if package['language']['name'] == 'nodejs' and \
@@ -212,7 +240,7 @@ def check_addon(addon, arch, api, node, python, test, query, type_):
             continue
 
         # Check test flag
-        if 'testOnly' in package and package['testOnly'] and not test:
+        if 'test_only' in package and package['test_only'] and not test:
             continue
 
         results.append(package)
@@ -245,26 +273,35 @@ async def get_list(request):
     if 'version' in args:
         version = args['version']
     elif ua is not None and ua.startswith('mozilla-iot-gateway/'):
-        version = ua.split('/')[1]
+        version = ua.split('/')[1].split(' ')[0]
     else:
         version = '0.6.1'
 
-    version = semver.parse(version)
+    version = semver.parse_version_info(version)
 
     results = []
     with _LOCK:
         for addon in _LIST:
-            packages = \
-                check_addon(addon, arch, api, node, python, test, query, type_)
+            packages = check_addon(
+                addon,
+                arch,
+                api,
+                node,
+                python,
+                test,
+                query,
+                type_,
+                version,
+            )
 
             if packages:
-                if version['major'] == 0 and version['minor'] <= 6:
+                if version.major == 0 and version.minor <= 6:
                     results.append({
-                        'name': addon['name'],
-                        'display_name': addon['display_name'],
+                        'name': addon['id'],
+                        'display_name': addon['name'],
                         'description': addon['description'],
                         'author': addon['author'],
-                        'homepage': addon['homepage'],
+                        'homepage': addon['homepage_url'],
                         'packages': {
                             package['architecture']: {
                                 'version': package['version'],
@@ -274,19 +311,34 @@ async def get_list(request):
                         },
                         'api': packages[0]['api'],
                     })
-                else:
+                elif version.major == 0 and version.minor <= 9:
                     results.extend([
                         {
-                            'name': addon['name'],
-                            'display_name': addon['display_name'],
+                            'name': addon['id'],
+                            'display_name': addon['name'],
                             'description': addon['description'],
                             'author': addon['author'],
-                            'homepage': addon['homepage'],
-                            'license': addon['license'],
+                            'homepage': addon['homepage_url'],
+                            'license': addon['license_url'],
                             'version': package['version'],
                             'url': package['url'],
                             'checksum': package['checksum'],
-                            'type': addon['type'],
+                            'type': addon['primary_type'],
+                        } for package in packages
+                    ])
+                else:
+                    results.extend([
+                        {
+                            'id': addon['id'],
+                            'name': addon['name'],
+                            'description': addon['description'],
+                            'author': addon['author'],
+                            'homepage_url': addon['homepage_url'],
+                            'license_url': addon['license_url'],
+                            'version': package['version'],
+                            'url': package['url'],
+                            'checksum': package['checksum'],
+                            'primary_type': addon['primary_type'],
                         } for package in packages
                     ])
 
@@ -315,12 +367,12 @@ async def analytics(request):
 async def info(request):
     addons = ''
     with _LOCK:
-        for addon in sorted(_LIST, key=lambda e: e['display_name']):
+        for addon in sorted(_LIST, key=lambda e: e['name']):
             addons += _LI_TEMPLATE.format(
-                name=escape_html(addon['display_name']),
+                name=escape_html(addon['name']),
                 description=escape_html(addon['description']),
                 author=escape_html(addon['author']),
-                homepage=escape_html(addon['homepage']),
+                homepage=escape_html(addon['homepage_url']),
             )
 
     return response_html(_HTML.format(css=_CSS, addons=addons))
