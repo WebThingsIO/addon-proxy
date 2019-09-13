@@ -1,8 +1,0 @@
-dist: bionic
-language: python
-python:
-    - "3.7"
-install:
-    - pip install sanic==18.12 sanic_compress sanic-cors semver
-script:
-    - ./test.py
