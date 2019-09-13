@@ -5,4 +5,4 @@ python:
 install:
     - pip install sanic==18.12 sanic_compress sanic-cors semver
 script:
-    - ./travis.py
+    - ./test.py

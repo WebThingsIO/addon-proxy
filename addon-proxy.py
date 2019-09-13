@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 
+"""
+Add-on proxy server.
+
+This server reads a set of add-on list entries from a git repo and serves them
+back to a gateway, based on a set of filters.
+"""
+
 from collections import deque
 from sanic import Sanic
 from sanic.response import html as response_html, json as response_json
@@ -112,6 +119,13 @@ _LI_TEMPLATE = '''
 
 
 def escape_html(s):
+    """
+    Escape a string for HTML insertion.
+
+    s -- the string to escape
+
+    Returns the escaped string.
+    """
     return s\
         .replace('&', '&amp;')\
         .replace('<', '&lt;')\
@@ -121,6 +135,15 @@ def escape_html(s):
 
 
 def update_list(repo, branch):
+    """
+    Update the list.
+
+    This will pull the latest commits from the configured git repository
+    periodically.
+
+    repo -- the git repo
+    branch -- the git branch
+    """
     global _LIST
 
     if os.path.exists(_REPO_DIR):
@@ -173,6 +196,21 @@ def update_list(repo, branch):
 
 
 def check_addon(addon, arch, api, node, python, test, query, type_, version):
+    """
+    Check if an add-on entry matches the provided filters.
+
+    addon -- the entry to check
+    arch -- the user's architecture
+    api -- the user's API version
+    node -- the user's Node.js version
+    python -- the user's Python version(s)
+    test -- whether or not to include test-only add-ons
+    query -- a query string
+    type_ -- add-on type filter
+    version -- the user's gateway version
+
+    Returns True if the entry matches the filter, else False.
+    """
     results = []
 
     if query is not None:
@@ -257,6 +295,7 @@ CORS(app)
 # Serve the list
 @app.route('/addons')
 async def get_list(request):
+    """Get the add-on list which matches a set of filters."""
     args = request.raw_args
     ua = request.headers.get('User-Agent', None)
     _REQUESTS.append((time.time(), ua))
@@ -348,6 +387,7 @@ async def get_list(request):
 # Analytics route
 @app.route('/addons/analytics')
 async def analytics(request):
+    """Return some analytics."""
     requests = {}
     total = 0
     for req in _REQUESTS:
@@ -365,6 +405,7 @@ async def analytics(request):
 
 @app.route('/addons/info')
 async def info(request):
+    """Return an HTML page with a list of all add-ons."""
     addons = ''
     with _LOCK:
         for addon in sorted(_LIST, key=lambda e: e['name']):

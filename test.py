@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+"""Test the add-on proxy server."""
+
 from urllib.request import Request, urlopen
 import json
 import os
@@ -9,6 +11,7 @@ import time
 
 
 def start_server():
+    """Start up the proxy server."""
     args = [
         sys.executable,
         os.path.realpath(os.path.join(os.path.dirname(__file__), 'addon-proxy.py')),  # noqa
@@ -26,6 +29,13 @@ def start_server():
 
 
 def request_list(version):
+    """
+    Request the add-on list from the server.
+
+    version -- gateway version to simulate
+
+    Returns the list.
+    """
     api = 2
     arch = 'linux-arm'
     node_version = '57'
@@ -45,6 +55,7 @@ def request_list(version):
 
 
 def test_0_6_1():
+    """Test as gateway version 0.6.1."""
     addons = request_list('0.6.1')
 
     assert len(addons) > 0
@@ -73,6 +84,7 @@ def test_0_6_1():
 
 
 def test_0_9_2():
+    """Test as gateway version 0.9.2."""
     addons = request_list('0.9.2')
 
     assert len(addons) > 0
@@ -92,6 +104,7 @@ def test_0_9_2():
 
 
 def test_0_10_0():
+    """Test as gateway version 0.10.0."""
     addons = request_list('0.10.0')
 
     assert len(addons) > 0
