@@ -239,6 +239,14 @@ def check_addon(addon, arch, api, node, python, test, query, type_, version):
             if package['api']['min'] > api or package['api']['max'] < api:
                 continue
 
+            if version.minor <= 8 and addon['primary_type'] != 'adapter':
+                # Only adapters were supported before 0.9
+                continue
+            elif version.minor == 9 and \
+                    addon['primary_type'] not in ['adapter', 'notifier']:
+                # Only adapters and notifiers were supported in 0.9
+                continue
+
         if (version.major == 0 and version.minor >= 10) or version.major > 0:
             # Only check gateway version starting with 0.10
             # Verify minimum gateway version
