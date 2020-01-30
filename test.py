@@ -36,13 +36,11 @@ def request_list(version):
 
     Returns the list.
     """
-    api = 2
     arch = 'linux-arm'
     node_version = '57'
     py_versions = '2.7,3.5'
 
-    url = 'http://localhost:8080/addons?api={}&arch={}&node={}&python={}&version={}'.format(  # noqa
-        api,
+    url = 'http://localhost:8080/addons?arch={}&node={}&python={}&version={}'.format(  # noqa
         arch,
         node_version,
         py_versions,
