@@ -195,13 +195,12 @@ def update_list(repo, branch):
         time.sleep(_REFRESH_TIMEOUT)
 
 
-def check_addon(addon, arch, api, node, python, test, query, type_, version):
+def check_addon(addon, arch, node, python, test, query, type_, version):
     """
     Check if an add-on entry matches the provided filters.
 
     addon -- the entry to check
     arch -- the user's architecture
-    api -- the user's API version
     node -- the user's Node.js version
     python -- the user's Python version(s)
     test -- whether or not to include test-only add-ons
@@ -228,27 +227,22 @@ def check_addon(addon, arch, api, node, python, test, query, type_, version):
 
     for package in addon['packages']:
         # Verify architecture
-        if arch is not None and \
-                package['architecture'] != 'any' and \
-                package['architecture'] != arch:
+        if arch is not None and package['architecture'] not in ['any', arch]:
             continue
 
-        # Only check API version until 0.10
-        if version.major == 0 and version.minor <= 9:
-            # Verify API version
-            if package['api']['min'] > api or package['api']['max'] < api:
-                continue
+        # Only adapters were supported before 0.9
+        if version.major == 0 and version.minor <= 8 and \
+                addon['primary_type'] != 'adapter':
+            continue
 
-            if version.minor <= 8 and addon['primary_type'] != 'adapter':
-                # Only adapters were supported before 0.9
-                continue
-            elif version.minor == 9 and \
-                    addon['primary_type'] not in ['adapter', 'notifier']:
-                # Only adapters and notifiers were supported in 0.9
-                continue
+        # Only adapters and notifiers were supported in 0.9
+        if version.major == 0 and version.minor == 9 and \
+                addon['primary_type'] not in ['adapter', 'notifier']:
+            continue
 
+        # Only check gateway version starting with 0.10, since add-ons before
+        # that point were unable to indicate compatible gateway versions.
         if (version.major == 0 and version.minor >= 10) or version.major > 0:
-            # Only check gateway version starting with 0.10
             # Verify minimum gateway version
             if package['gateway']['min'] != '*':
                 try:
@@ -272,6 +266,8 @@ def check_addon(addon, arch, api, node, python, test, query, type_, version):
 
                 if version > max_gw:
                     continue
+        elif 'api' not in package:
+            continue
 
         # Verify node version
         if package['language']['name'] == 'nodejs' and \
@@ -310,7 +306,6 @@ async def get_list(request):
 
     # Defaults based on 0.6.X
     arch = args['arch'] if 'arch' in args else None
-    api = int(args['api']) if 'api' in args else 2
     node = args['node'] if 'node' in args else '57'
     python = args['python'].split(',') if 'python' in args else ['2.7', '3.5']
     test = args['test'] == '1' if 'test' in args else False
@@ -332,7 +327,6 @@ async def get_list(request):
             packages = check_addon(
                 addon,
                 arch,
-                api,
                 node,
                 python,
                 test,
@@ -356,7 +350,7 @@ async def get_list(request):
                                 'checksum': package['checksum'],
                             } for package in packages
                         },
-                        'api': packages[0]['api'],
+                        'api': 2,
                     })
                 elif version.major == 0 and version.minor <= 9:
                     results.extend([
