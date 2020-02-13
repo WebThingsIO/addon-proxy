@@ -291,7 +291,7 @@ def check_addon(addon, arch, node, python, test, query, type_, version):
 
 
 # Create the sanic app
-app = Sanic()
+app = Sanic('addon-proxy')
 CORS(app)
 compress = Compress()
 
