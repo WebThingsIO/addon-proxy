@@ -5,7 +5,8 @@ This is the server used to proxy a gateway add-on list from GitHub.
 ## Usage
 
 ```sh
-pip install sanic sanic_compress sanic_cors semver
+pip install sanic sanic-gzip semver
+pip install --pre 'sanic-cors>0.9.99'
 ./addon-proxy.py [port]
 ```
 

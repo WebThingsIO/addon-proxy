@@ -10,8 +10,8 @@ back to a gateway, based on a set of filters.
 from collections import deque
 from sanic import Sanic
 from sanic.response import html as response_html, json as response_json
-from sanic_compress import Compress
 from sanic_cors import CORS
+from sanic_gzip import Compress
 from threading import RLock, Thread
 import argparse
 import glob
@@ -292,12 +292,13 @@ def check_addon(addon, arch, node, python, test, query, type_, version):
 
 # Create the sanic app
 app = Sanic()
-Compress(app)
 CORS(app)
+compress = Compress()
 
 
 # Serve the list
 @app.route('/addons')
+@compress.compress()
 async def get_list(request):
     """Get the add-on list which matches a set of filters."""
     args = request.raw_args
@@ -388,6 +389,7 @@ async def get_list(request):
 
 # Analytics route
 @app.route('/addons/analytics')
+@compress.compress()
 async def analytics(request):
     """Return some analytics."""
     requests = {}
@@ -406,6 +408,7 @@ async def analytics(request):
 
 
 @app.route('/addons/info')
+@compress.compress()
 async def info(request):
     """Return an HTML page with a list of all add-ons."""
     addons = ''
