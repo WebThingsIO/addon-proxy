@@ -2,6 +2,7 @@
 
 """Test the add-on proxy server."""
 
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 import json
 import os
@@ -50,6 +51,20 @@ def request_list(version):
     r = Request(url, headers={'Accept': 'application/json'})
     f = urlopen(r)
     return json.load(f)
+
+
+def request_license(addon_id):
+    """
+    Request a license from the server.
+
+    addon_id -- id of the add-on
+
+    Returns the status code and license text, if available.
+    """
+    url = 'http://localhost:8080/addons/license/{}'.format(addon_id)
+    r = Request(url)
+    f = urlopen(r)
+    return f.status, f.read()
 
 
 def test_0_6_1():
@@ -121,6 +136,21 @@ def test_0_10_0():
     assert 'primary_type' in addon and addon['primary_type']
 
 
+def test_license():
+    """Test the license route."""
+    try:
+        status, text = request_license('nonexistent')
+    except HTTPError as e:
+        assert e.code == 404
+    else:
+        print('License should have been a 404')
+        sys.exit(1)
+
+    status, text = request_license('zwave-adapter')
+    assert status == 200
+    assert len(text) > 0
+
+
 if __name__ == '__main__':
     # Start the server
     p = start_server()
@@ -132,6 +162,9 @@ if __name__ == '__main__':
     test_0_6_1()
     test_0_9_2()
     test_0_10_0()
+
+    # Test the license route
+    test_license()
 
     # Kill the server
     p.terminate()

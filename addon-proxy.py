@@ -9,7 +9,12 @@ back to a gateway, based on a set of filters.
 
 from collections import deque
 from sanic import Sanic
-from sanic.response import html as response_html, json as response_json
+from sanic.response import (
+    empty as response_empty,
+    html as response_html,
+    json as response_json,
+    text as response_text
+)
 from sanic_cors import CORS
 from sanic_gzip import Compress
 from threading import RLock, Thread
@@ -17,6 +22,7 @@ import argparse
 import glob
 import json
 import os
+import requests
 import semver
 import shutil
 import subprocess
@@ -388,6 +394,29 @@ async def get_list(request):
     return response_json(results)
 
 
+# License route
+@app.route('/addons/license/<addon_id>')
+@compress.compress()
+async def get_license(request, addon_id):
+    """Get the license text for a specific add-on."""
+    license_url = None
+
+    with _LOCK:
+        for addon in _LIST:
+            if addon['id'] == addon_id:
+                license_url = addon['license_url']
+                break
+
+    if not license_url:
+        return response_empty(status=404)
+
+    try:
+        r = requests.get(license_url)
+        return response_text(r.text)
+    except requests.exceptions.RequestException:
+        return response_empty(status=500)
+
+
 # Analytics route
 @app.route('/addons/analytics')
 @compress.compress()
@@ -408,6 +437,7 @@ async def analytics(request):
     return response_json(requests)
 
 
+# Small UI to show available add-ons
 @app.route('/addons/info')
 @compress.compress()
 async def info(request):
