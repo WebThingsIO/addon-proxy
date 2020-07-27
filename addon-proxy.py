@@ -301,20 +301,21 @@ compress = Compress()
 @compress.compress()
 async def get_list(request):
     """Get the add-on list which matches a set of filters."""
-    args = request.raw_args
+    args = request.args
     ua = request.headers.get('User-Agent', None)
     _REQUESTS.append((time.time(), ua))
 
     # Defaults based on 0.6.X
-    arch = args['arch'] if 'arch' in args else None
-    node = args['node'] if 'node' in args else '57'
-    python = args['python'].split(',') if 'python' in args else ['2.7', '3.5']
-    test = args['test'] == '1' if 'test' in args else False
-    query = args['query'] if 'query' in args else None
-    type_ = args['type'] if 'type' in args else None
+    arch = args['arch'][0] if 'arch' in args else None
+    node = args['node'][0] if 'node' in args else '57'
+    python = \
+        args['python'][0].split(',') if 'python' in args else ['2.7', '3.5']
+    test = args['test'][0] == '1' if 'test' in args else False
+    query = args['query'][0] if 'query' in args else None
+    type_ = args['type'][0] if 'type' in args else None
 
     if 'version' in args:
-        version = args['version']
+        version = args['version'][0]
     elif ua is not None and ua.startswith('mozilla-iot-gateway/'):
         version = ua.split('/')[1].split(' ')[0]
     else:
