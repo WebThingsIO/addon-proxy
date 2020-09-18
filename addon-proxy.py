@@ -31,7 +31,7 @@ import time
 
 
 _DEFAULT_PORT = 80
-_DEFAULT_REPO = 'https://github.com/mozilla-iot/addon-list'
+_DEFAULT_REPO = 'https://github.com/WebThingsIO/addon-list'
 _DEFAULT_BRANCH = 'master'
 
 _BASE_DIR = os.path.realpath(os.path.dirname(__file__))
@@ -107,7 +107,7 @@ _HTML = '''
         {css}
     </head>
     <body>
-        <h1>Mozilla WebThings Gateway Add-ons</h1>
+        <h1>WebThings Gateway Add-ons</h1>
         <ul>
         {addons}
         </ul>
@@ -322,7 +322,8 @@ async def get_list(request):
 
     if 'version' in args:
         version = args['version'][0]
-    elif ua is not None and ua.startswith('mozilla-iot-gateway/'):
+    elif ua is not None and (ua.startswith('mozilla-iot-gateway/') or
+                             ua.startswith('webthings-gateway/')):
         version = ua.split('/')[1].split(' ')[0]
     else:
         version = '0.6.1'
