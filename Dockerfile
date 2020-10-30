@@ -1,4 +1,4 @@
-FROM python:3.8-slim
+FROM python:3.9
 
 COPY addon-proxy.py requirements.txt /app/
 ARG DEBIAN_FRONTEND=noninteractive
