@@ -1,6 +1,7 @@
 FROM python:3.8-slim
 
-COPY . /app
+COPY addon-proxy.py requirements.txt /app/
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt update && \
     apt dist-upgrade -y && \
     apt install -y git && \

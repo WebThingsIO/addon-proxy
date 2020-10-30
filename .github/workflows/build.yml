@@ -1,4 +1,4 @@
-name: Python application
+name: Build
 
 on:
   pull_request:
@@ -28,3 +28,9 @@ jobs:
     - name: Test proxy server
       run: |
         ./test.py
+    - name: Build Docker image
+      uses: ilteoood/docker_buildx@master
+      with:
+        publish: false
+        imageName: webthingsio/addon-proxy
+        platform: linux/amd64,linux/arm/v7,linux/arm64
